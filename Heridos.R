@@ -27,12 +27,23 @@ rosmap <- rosmap[rosmap$POLY_ID != 842, ]
 # Dataset heridos
 prohibido <- filter(prohibido, !POLY_ID == 842)
 
-# join entre ambos dataframes
+# Join entre ambos dataframes
 heridos <- sp::merge(rosmap, prohibido, by = c("POLY_ID" = "POLY_ID"))
 rosmap <- heridos
 
 # heridos@data = heridos@data[!heridos@data$Heridos== 0, ]
-x <- rosmap$Proporcion #Variable de interes principal
+# Por cuestiones de confidencialidad se agrega un ruido aleatorio a las proporciones 
+set.seed(7)
+#for (i in 1:nrow(rosmap)){
+#  seba[i] <- sample(1:round(rosmap$THOGARES.x[i] * 0.01, 0), 1)
+#}
+
+for (i in 1:nrow(rosmap)){
+  rosmap$Heridos[i] <- rosmap$Heridos[i] + sample(1:round(rosmap$THOGARES.x[i] * 0.02, 0), 1)
+}
+rosmap$Proporcion <- rosmap$Heridos / rosmap$THOGARES.x
+x <- rosmap$Proporcion  #Variable de interes principal
+
 arrow <- list("SpatialPolygonsRescale", layout.north.arrow(), offset=c(-60.75, -33), scale(10))
 spplot(rosmap, "Proporcion", key.space = list(x = 0.62, y = 1, corner = c(0, 1)), sp.layout = list(arrow),
        colorkey = list(space = "right"), scales = list(draw = T),
@@ -57,16 +68,18 @@ ggplot(vecinos, aes(x = Vecinos, y = Frecuencia)) +
   theme(
     plot.title = element_blank()
   )
+
 #grafico de dispersion de moran
 rezagos <- cbind(x, lag.listw(lista, x))
 rezagos <- as.data.frame(rezagos)
-names(rezagos)[1] = "Hogares"
+names(rezagos)[1] = "Heridos"
 names(rezagos)[2] = "Retardos"
-ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
+ggplot(rezagos, aes(x = Heridos, y = Retardos)) +
   geom_point(color = "blue", size = 2, shape = 20) +
   stat_smooth(method = "lm", se = F, col = "red") +
   scale_x_continuous("Proporción de Heridos con arma de fuego") +
   scale_y_continuous("Retardo Espacial") +
+  coord_cartesian(xlim = c(min(rezagos$Heridos), max(rezagos$Heridos)), ylim = c(min(rezagos$Retardos), max(rezagos$Retardos))) +
   ggtitle("Gráfico de dispersión de Moran") +
   theme(
     plot.title = element_blank()
@@ -77,13 +90,13 @@ ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
 #ggsave() para guardar el grafico ggsave("miDibujito.jpg", g,width = 8, height = 5, units = "cm") puede ser pdf, etc
 #hay opciones para llevarlo a powerpoint y editarlo alli
 #ver ggfortify
-#Obtencion de la matriz de pesos W
+# Obtencion de la matriz de pesos W
 W <- nb2mat(reina, glist = NULL, style = "S", zero.policy = NULL)
-#Calculo del indice de Moran utilizando las matrices 
-#Se comprueba la igualdad con el obtenido directamente con la sentencia correspondiente
-ni <-rosmap$Heridos#vector que contiene el n?mero de hogares con nbi en cada radio censal
-m <- length(ni)#n?mero de ?reas o radios censales
-xi <- rosmap$THOGARES.x# vector que contiene el n?mero de hogares en cada radio censal
+# Calculo del indice de Moran utilizando las matrices 
+# Se comprueba la igualdad con el obtenido directamente con la sentencia correspondiente
+ni <-rosmap$Heridos #vector que contiene el numero de hogares con nbi en cada radio censal
+m <- length(ni) #numero de areas o radios censales
+xi <- rosmap$THOGARES.x# vector que contiene el numero de hogares en cada radio censal
 pi <- ni / xi
 pmedia <- sum(pi) / m
 pdif <- pi - pmedia
@@ -91,10 +104,11 @@ denominador <- sum(W) * (t(pdif) %*% pdif)
 numerador <- m * (t(pdif) %*% W %*% pdif)
 Imoran <- numerador / denominador
 print(Imoran)#Coincide con el calculado anteriormente
-#EBI: Empirical Bayes Index
+
+# EBI: Empirical Bayes Index
 Q <- EBest(ni, xi, family = "poisson")
 View(Q)#La primer columna contiene los pi y la segunda las estimaciones emp?ricas de bayes
-#C?lculo de EBI
+# Calculo de EBI
 ebi <- EBImoran.mc(ni, xi, lista, nsim = 999, zero.policy = TRUE)#observamos que se incrementa el valor del ?ndice con respecto al de referencia
 print(ebi)
 summary(ebi)
@@ -103,14 +117,14 @@ plot(ebi)#----Pensar los graficos que se pueden hacer
 # Grafico mejorado para el EBI
 rezagos <- Q
 rezagos <- as.data.frame(rezagos)
-names(rezagos)[1] = "Hogares"
+names(rezagos)[1] = "Heridos"
 names(rezagos)[2] = "Retardos"
-ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
+ggplot(rezagos, aes(x = Heridos, y = Retardos)) +
   geom_point(color = "blue", size = 2, shape = 20) +
   stat_smooth(method = "lm", se = F, col = "red") +
   scale_x_continuous("Proporción de Heridos de arma de fuego") +
   scale_y_continuous("Retardo Espacial") +
-  coord_cartesian(xlim = c(0, 0.05), ylim = c(0, 0.05)) +
+  coord_cartesian(xlim = c(min(rezagos$Heridos), max(rezagos$Heridos)), ylim = c(min(rezagos$Retardos), max(rezagos$Retardos))) +
   ggtitle("Gráfico de dispersión de Moran") +
   theme(
     plot.title = element_blank()
