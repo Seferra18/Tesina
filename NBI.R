@@ -28,18 +28,74 @@ for (i in 1:nrow(duplicados)){
 #Es necesario eliminar la observacion 842, ya que no contiene hogares
 rosmap <- rosmap[rosmap$POLY_ID != 842, ]
 
-x <- rosmap$prop #Variable de interes principal
+# EDA previo al analisis espacial
+# Algunas medidas resumenes interesantes
+total_radios <- nrow(rosmap)
+total_hogares <- sum(rosmap$THOGARES)
+total_hogaresNBI <- sum(rosmap$con_NBI)
+proporcion_promedio <- sum(rosmap$con_NBI) / sum(rosmap$THOGARES)
 
+paste0("La cantidad total de radios censales en Rosario es ", total_radios)
+paste0("La cantidad total de hogares en Rosario es ", total_hogares)
+paste0("La cantidad total de hogares con NBI en Rosario es ", total_hogaresNBI)
+paste0("La proporción promedio de hogares con NBI en Rosario es ", round(proporcion_promedio, 4))
+
+# Histograma de la cantidad de hogares por radio censal en Rosario
+df_aux <- rosmap$THOGARES
+df_aux <- as.data.frame(df_aux)
+names(df_aux)[1] = "Total_Hogares"
+ggplot(df_aux, aes(x = df_aux$Total_Hogares)) +
+  geom_histogram(binwidth = 50,
+                 center = 25,
+                 aes(col=I("white")), color = "blue") +
+  scale_y_continuous("Frecuencia") +
+  scale_x_continuous(breaks=seq(0, max(df_aux$Total_Hogares + 50), by = 200), "Total de Hogares") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("total_hogares.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+# Histograma de la cantidad de hogares  con NBI por radio censal en Rosario
+df_aux1 <- rosmap$con_NBI
+df_aux1 <- as.data.frame(df_aux1)
+names(df_aux1)[1] = "Total_Hogares_NBI"
+ggplot(df_aux1, aes(x = df_aux1$Total_Hogares_NBI)) +
+  geom_histogram(binwidth = 10,
+                 center = 5,
+                 aes(col=I("white")), color = "blue") +
+  scale_y_continuous("Frecuencia") +
+  scale_x_continuous(breaks=seq(0, max(df_aux1$Total_Hogares_NBI + 10), by = 25), "Total de Hogares con NBI") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("total_hogares_NBI.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+df_aux2 <- rosmap$prop
+df_aux2 <- as.data.frame(df_aux2)
+names(df_aux2)[1] = "Prop_Hogares_NBI"
+ggplot(df_aux2, aes(x = df_aux2$Prop_Hogares_NBI)) +
+  geom_histogram(binwidth = 0.02,
+                 center = 0.02,
+                 aes(col=I("white")), color = "blue") +
+  scale_y_continuous("Frecuencia") +
+  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Hogares_NBI), by = 0.1), "Proporción de Hogares con NBI") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("proporcion_hogares_NBI.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+# Comienzo del analisis espacial
+x <- rosmap$prop #Variable de interes principal
 # Grafico exploratorio
 plot(rosmap, main="Radios censales de la ciudad de Rosario")
 
 # Grafico de calor que indica el porcentaje de hogares con NBI a lo largo de todos los radios censales en Rosario
 arrow <- list("SpatialPolygonsRescale", layout.north.arrow(), offset=c(-60.75, -33), scale(10))
-
+jpeg(file = "nbi_radios.jpg")
 spplot(rosmap, "porc", key.space = list(x = 0.62, y = 1, corner = c(0, 1)), sp.layout = list(arrow),
        colorkey = list(space = "right"), scales = list(draw = T),
        main = "Porcentaje de Hogares con NBI en Rosario", as.table = TRUE)
-
+dev.off()
 #Definicion del vecindario tipo reina
 reina <- poly2nb(rosmap, queen = TRUE)#dnearneigh basado en distancias
 
@@ -63,7 +119,7 @@ ggplot(vecinos, aes(x = Vecinos, y = Frecuencia)) +
   theme(
     plot.title = element_blank()
   )
-
+ggsave("nbi_vecinos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 # Grafico de dispersion de moran
 rezagos <- cbind(x, lag.listw(lista, x))
 rezagos <- as.data.frame(rezagos)
@@ -79,6 +135,7 @@ ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
   theme(
     plot.title = element_blank()
     )
+ggsave("nbi_moran.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
 # Obtencion de los centroides de cada radio censal
 centroides <- gCentroid(rosmap, byid = TRUE)
@@ -106,12 +163,12 @@ print(Imoran) #Coincide con el calculado anteriormente
 
 #EBI: Empirical Bayes Index
 Q <- EBest(ni, xi, family = "poisson")
-View(Q)#La primer columna contiene los pi y la segunda las estimaciones empiricas de bayes
+#View(Q)#La primer columna contiene los pi y la segunda las estimaciones empiricas de bayes
 # Calculo del EBI
 ebi <- EBImoran.mc(ni, xi, lista, nsim = 999, zero.policy = TRUE) #observamos que se incrementa el valor del indice con respecto al de Moran
 print(ebi)
 summary(ebi)
-View(ebi)
+#View(ebi)
 plot(ebi)#----Pensar los graficos que se pueden hacer
 plot(Q)
 
@@ -130,7 +187,7 @@ ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
   theme(
     plot.title = element_blank()
   )
-
+ggsave("nbi_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 # Obtencion de la matriz de pesos M
 M <- W
 diag(M) <- 2 #Para todo i=j--->mij=2, tal como se detalla en el paper

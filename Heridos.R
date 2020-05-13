@@ -39,16 +39,53 @@ set.seed(7)
 #}
 
 for (i in 1:nrow(rosmap)){
-  rosmap$Heridos[i] <- rosmap$Heridos[i] + sample(1:round(rosmap$THOGARES.x[i] * 0.02, 0), 1)
+  rosmap$Heridos[i] <- (rosmap$Heridos[i] / rosmap$THOGARES.x[i] + 0.001) * rosmap$THOGARES.x[i] 
 }
+
+total_heridos <- sum(rosmap$Heridos)
+proporcion_promedio <- sum(rosmap$Heridos) / sum(rosmap$THOGARES.x)
+
+paste0("La cantidad total de hogares con NBI en Rosario es ", total_heridos)
+paste0("La proporción promedio de herdidos arma de fuego en Rosario es ", round(proporcion_promedio, 4))
+
+# Histograma de la cantidad de heridos por radio censal en Rosario
+df_aux1 <- rosmap$Heridos
+df_aux1 <- as.data.frame(df_aux1)
+names(df_aux1)[1] = "Total_Heridos"
+ggplot(df_aux1, aes(x = df_aux1$Total_Heridos)) +
+  geom_histogram(binwidth = 1,
+                 center = 1,
+                 aes(col=I("white")), color = "blue") +
+  scale_y_continuous("Frecuencia") +
+  scale_x_continuous(breaks=seq(0, max(df_aux1$Total_Heridos), by = 1), "Total de Heridos por arma de fuego") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("total_heridos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+df_aux2 <- rosmap$Heridos / rosmap$THOGARES.x 
+df_aux2 <- as.data.frame(df_aux2)
+names(df_aux2)[1] = "Prop_Heridos"
+ggplot(df_aux2, aes(x = df_aux2$Prop_Heridos)) +
+  geom_histogram(binwidth = 0.005,
+                 center = 0.005,
+                 aes(col=I("white")), color = "blue") +
+  scale_y_continuous("Frecuencia") +
+  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Heridos) , by = 0.01), "Proporción de Heridos de arma de fuego") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("proporcion_heridos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
 rosmap$Proporcion <- rosmap$Heridos / rosmap$THOGARES.x
 x <- rosmap$Proporcion  #Variable de interes principal
 
+jpeg(file = "her_radios.jpg")
 arrow <- list("SpatialPolygonsRescale", layout.north.arrow(), offset=c(-60.75, -33), scale(10))
 spplot(rosmap, "Proporcion", key.space = list(x = 0.62, y = 1, corner = c(0, 1)), sp.layout = list(arrow),
        colorkey = list(space = "right"), scales = list(draw = T),
        main = "Porcentaje de heridos de arma de fuego en Rosario", as.table = TRUE)
-
+dev.off()
 # Definicion del vecindario tipo reina
 reina <- poly2nb(rosmap, queen = TRUE)
 lista <- nb2listw(reina, style = "S")
@@ -68,6 +105,7 @@ ggplot(vecinos, aes(x = Vecinos, y = Frecuencia)) +
   theme(
     plot.title = element_blank()
   )
+ggsave("her_vecinos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
 #grafico de dispersion de moran
 rezagos <- cbind(x, lag.listw(lista, x))
@@ -84,6 +122,8 @@ ggplot(rezagos, aes(x = Heridos, y = Retardos)) +
   theme(
     plot.title = element_blank()
   )
+ggsave("her_moran.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
 #Obtencion de los centroides de cada radio censal
 #centroides <- gCentroid(rosmap, byid = TRUE)
 #plot(centroides)
@@ -107,12 +147,12 @@ print(Imoran)#Coincide con el calculado anteriormente
 
 # EBI: Empirical Bayes Index
 Q <- EBest(ni, xi, family = "poisson")
-View(Q)#La primer columna contiene los pi y la segunda las estimaciones emp?ricas de bayes
+#View(Q)#La primer columna contiene los pi y la segunda las estimaciones emp?ricas de bayes
 # Calculo de EBI
 ebi <- EBImoran.mc(ni, xi, lista, nsim = 999, zero.policy = TRUE)#observamos que se incrementa el valor del ?ndice con respecto al de referencia
 print(ebi)
 summary(ebi)
-View(ebi)
+#View(ebi)
 plot(ebi)#----Pensar los graficos que se pueden hacer
 # Grafico mejorado para el EBI
 rezagos <- Q
@@ -129,6 +169,7 @@ ggplot(rezagos, aes(x = Heridos, y = Retardos)) +
   theme(
     plot.title = element_blank()
   )
+ggsave("her_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
 # Obtencion de la matriz de pesos M
 M <- W
@@ -162,7 +203,7 @@ aux <- x * ((x ^ 2 - 3 * x + 3) * s1 - x * s2 + 3 * s0 ^ 2) - b2 * (x * (x - 1) 
 espcuad <- aux / ((x - 1) * (x - 2) * (x - 3) * s0 ^ 2)
 stdev <- sqrt(espcuad - 1 / (x - 1) ^ 2)
 z <- (Ipop + 1 / (x - 1)) / stdev
-var_aprox <- (2 * A ^ 2 + C /2 - E) / (A ^ 2 * x ^ 2) #A proximacion valida para x grande
+var_aprox <- (2 * A ^ 2 + C /2 - E) / (A ^ 2 * x ^ 2) #Aproximacion valida para x grande
 resultados <-c (Ipop, -1 / (x - 1), stdev ^ 2, var_aprox, stdev, z, 1 - pnorm(z)) #pnorm indica la funcionn de distribucion normal, por lo tanto 1-pnorm(Zdesvio) es el p-valor
 etiquetas <- c("I*pop", "Media", "Variancia", "Variancia Aproximada", "Desvio Estandar", "Z", "P-valor")
 resultados_finales <- cbind(etiquetas, resultados)#concatena los vectores por columna
