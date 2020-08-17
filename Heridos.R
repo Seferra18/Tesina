@@ -107,6 +107,25 @@ ggplot(vecinos, aes(x = Vecinos, y = Frecuencia)) +
   )
 ggsave("her_vecinos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
+#Funcion boxplot
+cajaBigotes <- function(df, y, labely, q){
+  ggplot(df, aes(x=0, y=y)) + 
+    geom_boxplot(width = 0.8, color = "blue", size = 0.5) + 
+    scale_y_continuous(labely, breaks = round(seq(0, max(y), by =q),2)) +
+    theme(axis.title.x=element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())
+}
+
+# Total de heridos
+cajaBigotes(df_aux1, df_aux1$Total_Heridos, "Cantidad de heridos", 1)
+ggsave("heridos_bp.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+# Proporcion de heridos
+cajaBigotes(df_aux2, df_aux2$Prop_Heridos, "Proporción de heridos", 0.01)
+ggsave("prop_heridos_bp.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+
 #grafico de dispersion de moran
 rezagos <- cbind(x, lag.listw(lista, x))
 rezagos <- as.data.frame(rezagos)

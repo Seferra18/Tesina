@@ -106,6 +106,36 @@ lista <- nb2listw(reina, style = "S")
 moran.test(x, lista)# Supuesto de normalidad
 moran.mc(x, lista, nsim = 999) # Test permutacional
 
+#Funcion boxplot
+cajaBigotes <- function(df, y, labely, q){
+  ggplot(df, aes(x=0, y=y)) + 
+    geom_boxplot(width = 0.8, color = "blue", size = 0.5) + 
+    scale_y_continuous(labely, breaks = round(seq(0, max(y), by =q),2)) +
+    theme(axis.title.x=element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())
+}
+# BOXPLOTS
+# Vecinos
+vecinos_bp <- card(reina)
+vecinos_bp <- as.data.frame(vecinos_bp)
+names(vecinos_bp)[1] = "Vecinos"
+cajaBigotes(vecinos_bp, vecinos_bp$Vecinos, "Cantidad de vecinos", 2)
+ggsave("vecinos_bp.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+# Total de hogares
+cajaBigotes(df_aux, df_aux$Total_Hogares, "Cantidad de hogares", 100)
+ggsave("hogares_bp.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+# Total de hogares con nbi
+cajaBigotes(df_aux1, df_aux1$Total_Hogares_NBI, "Cantidad de hogares con NBI", 25)
+ggsave("hogares_NBI_bp.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+# Proporcion de hogares con nbi
+cajaBigotes(df_aux2, df_aux2$Prop_Hogares_NBI, "Proporción de hogares con NBI", 0.1)
+ggsave("proporcion_NBI_bp.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
+
 # Distribucion del numero de vecinos
 vecinos <- table(card(reina))
 vecinos <- as.data.frame(vecinos)
