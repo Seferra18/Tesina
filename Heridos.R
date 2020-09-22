@@ -1,5 +1,6 @@
-# Heridos de arma de fuego
-list.of.packages <- c("readxl","ggplot2","sp","rgdal","RColorBrewer","Matrix","lattice","classInt","gtools","sf","spdep","dplyr", "xlsx", "lubridate", "tidyverse","car","raster","rgeos")
+# Carga de paquetes necesarios 
+list.of.packages <- c("readxl","ggplot2","sp","rgdal","RColorBrewer","Matrix","lattice","classInt","gtools","sf","spdep","dplyr", 
+                      "xlsx", "lubridate", "tidyverse","car","raster","rgeos", "spdplyr", "magrittr", "tmap")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[, "Package"])]
 if(length(new.packages)) install.packages(new.packages)
 for (paquete in list.of.packages) {suppressMessages(library(paquete,character.only = TRUE) ) }
@@ -8,12 +9,35 @@ for (paquete in list.of.packages) {suppressMessages(library(paquete,character.on
 rosmap <- readOGR("C:/Users/FerraroS/Desktop/Todo_seba/Cosas/Quinto anio - Tesis/Bases", "Rosario2010")
 
 # Conjunto de datos con info de heridos
-df <- read_excel("C:/Users/FerraroS/Desktop/Todo_seba/Cosas/Quinto anio - Tesis/Bases/prohibido_1.xlsx")
-prohibido <- df
+prohibido <- read_excel("C:/Users/FerraroS/Desktop/Todo_seba/Cosas/Quinto anio - Tesis/Bases/prohibido_1.xlsx")
+
+# Datos de habitantes
+habitantes <- read_excel("C:/Users/FerraroS/Desktop/Todo_seba/Cosas/Quinto anio - Tesis/Bases/Datos_2010_seba_tesina.xlsx")
+habitantes <- dplyr::select(habitantes, 'POLY_ID', 'Hombres', 'Mujeres', 'Habitantes', 'DUPLICADO')
+# Join entre ambos dataframes
+prohibido <- merge(prohibido, habitantes, by = c("POLY_ID" = "POLY_ID"))
+
+# Se eliminan columnas para no duplicar en el siguiente merge
+prohibido_aux <- dplyr::select(prohibido, c(POLY_ID, Heridos, Hombres, Mujeres, Habitantes, DUPLICADO))
+
+rosmap <- sp::merge(rosmap, prohibido_aux, by = c("POLY_ID" = "POLY_ID"))
+
+# Es necesario eliminar la observacion 842, ya que no contiene hogares
+rosmap <- rosmap[rosmap$POLY_ID != 842, ]
+
+# variable de interes
+rosmap$Habitantes <- as.numeric(rosmap$Habitantes)
+rosmap$her_habitantes <- (rosmap$Heridos / rosmap$Habitantes)*1000
+# Se crea una columna con las clases determinadas por percentiles que se consideran convenientes
+rosmap = rosmap %>% mutate(Referencias = case_when(her_habitantes < quantile(rosmap$her_habitantes, 0.8) ~ '1< 80% (Sin heridos)',
+                                                         quantile(rosmap$her_habitantes, 0.8) <= her_habitantes & her_habitantes < quantile(rosmap$her_habitantes, 0.85) ~ '280%-85%',
+                                                         quantile(rosmap$her_habitantes, 0.85) <= her_habitantes & her_habitantes < quantile(rosmap$her_habitantes, 0.90) ~ '385%-90%',
+                                                         quantile(rosmap$her_habitantes, 0.90) <= her_habitantes & her_habitantes < quantile(rosmap$her_habitantes, 0.95) ~ '490%-95%',
+                                                         quantile(rosmap$her_habitantes, 0.95) <= her_habitantes ~ '5> 95%'))
 
 # Se detectan registros duplicados
-coordinates(df) <- ~X+Y
-duplicados <- zerodist(df)
+coordinates(prohibido) <- ~X+Y
+duplicados <- zerodist(prohibido)
 for (i in 1:nrow(duplicados)){
   rosmap <- rosmap[rosmap$POLY_ID != duplicados[i, 1],]
 }
@@ -21,38 +45,38 @@ for (i in 1:nrow(duplicados)){
   prohibido <- prohibido[prohibido$POLY_ID != duplicados[i, 1],]
 }
 
-# Es necesario eliminar la observacion 842, ya que no contiene hogares
-rosmap <- rosmap[rosmap$POLY_ID != 842, ]
-
-# Dataset heridos
-prohibido <- filter(prohibido, !POLY_ID == 842)
-
-# Join entre ambos dataframes
-heridos <- sp::merge(rosmap, prohibido, by = c("POLY_ID" = "POLY_ID"))
-rosmap <- heridos
-
-# heridos@data = heridos@data[!heridos@data$Heridos== 0, ]
 # Por cuestiones de confidencialidad se agrega un ruido aleatorio a las proporciones 
-set.seed(7)
+#set.seed(7)
 #for (i in 1:nrow(rosmap)){
-#  seba[i] <- sample(1:round(rosmap$THOGARES.x[i] * 0.01, 0), 1)
+#  rosmap$Heridos[i] <- (rosmap$Heridos[i] / rosmap$Habitantes[i] + 0.001) * rosmap$Habitantes[i] 
 #}
 
-for (i in 1:nrow(rosmap)){
-  rosmap$Heridos[i] <- (rosmap$Heridos[i] / rosmap$THOGARES.x[i] + 0.001) * rosmap$THOGARES.x[i] 
-}
-
 total_heridos <- sum(rosmap$Heridos)
-proporcion_promedio <- sum(rosmap$Heridos) / sum(rosmap$THOGARES.x)
+proporcion_promedio <- sum(rosmap$Heridos) / sum(rosmap$Habitantes)
 
-paste0("La cantidad total de hogares con NBI en Rosario es ", total_heridos)
-paste0("La proporción promedio de herdidos arma de fuego en Rosario es ", round(proporcion_promedio, 4))
+paste0("La cantidad total de Heridos de arma de fuego en Rosario es ", total_heridos)
+paste0("La proporción promedio de Heridos de arma de fuego en Rosario es ", round(proporcion_promedio, 6))
+
+# Histograma de la cantidad de habitantes por radio censal en Rosario
+df_aux <- rosmap$Habitantes
+df_aux <- as.data.frame(df_aux)
+names(df_aux)[1] = "Total_Habitantes"
+ggplot(df_aux, aes(x = df_aux$Total_Habitantes)) +
+  geom_histogram(binwidth = 100,
+                 center = 50,
+                 aes(col=I("white")), color = "blue") +
+  scale_y_continuous("Frecuencia") +
+  scale_x_continuous(breaks=seq(0, max(df_aux$Total_Habitantes + 100), by = 500), "Total de Habitantes") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("total_habitantes.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
 # Histograma de la cantidad de heridos por radio censal en Rosario
 df_aux1 <- rosmap$Heridos
 df_aux1 <- as.data.frame(df_aux1)
 names(df_aux1)[1] = "Total_Heridos"
-ggplot(df_aux1, aes(x = df_aux1$Total_Heridos)) +
+ggplot(df_aux1, aes(x = Total_Heridos)) +
   geom_histogram(binwidth = 1,
                  center = 1,
                  aes(col=I("white")), color = "blue") +
@@ -63,29 +87,37 @@ ggplot(df_aux1, aes(x = df_aux1$Total_Heridos)) +
   )
 ggsave("total_heridos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
-df_aux2 <- rosmap$Heridos / rosmap$THOGARES.x 
+df_aux2 <- rosmap$Heridos / rosmap$Habitantes 
 df_aux2 <- as.data.frame(df_aux2)
 names(df_aux2)[1] = "Prop_Heridos"
 ggplot(df_aux2, aes(x = df_aux2$Prop_Heridos)) +
-  geom_histogram(binwidth = 0.005,
-                 center = 0.005,
+  geom_histogram(binwidth = 0.001,
+                 center = 0.001,
                  aes(col=I("white")), color = "blue") +
   scale_y_continuous("Frecuencia") +
-  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Heridos) , by = 0.01), "Proporción de Heridos de arma de fuego") +
+  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Heridos) , by = 0.002), "Proporción de Heridos de arma de fuego") +
   theme(
     plot.title = element_blank()
   )
 ggsave("proporcion_heridos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
-rosmap$Proporcion <- rosmap$Heridos / rosmap$THOGARES.x
-x <- rosmap$Proporcion  #Variable de interes principal
+x <- rosmap$her_habitantes  #Variable de interes principal
 
-jpeg(file = "her_radios.jpg")
-arrow <- list("SpatialPolygonsRescale", layout.north.arrow(), offset=c(-60.75, -33), scale(10))
-spplot(rosmap, "Proporcion", key.space = list(x = 0.62, y = 1, corner = c(0, 1)), sp.layout = list(arrow),
-       colorkey = list(space = "right"), scales = list(draw = T),
-       main = "Porcentaje de heridos de arma de fuego en Rosario", as.table = TRUE)
-dev.off()
+#jpeg(file = "her_radios.jpg")
+#arrow <- list("SpatialPolygonsRescale", layout.north.arrow(), offset=c(-60.75, -33), scale(10))
+#spplot(rosmap, "Proporcion", key.space = list(x = 0.62, y = 1, corner = c(0, 1)), sp.layout = list(arrow),
+#       colorkey = list(space = "right"), scales = list(draw = T),
+#       main = "Porcentaje de heridos de arma de fuego en Rosario", as.table = TRUE)
+#dev.off()
+
+# BOX MAP
+plot <- tm_shape(rosmap) +
+  tm_borders() +
+  tm_fill(col = 'Referencias')+
+  tm_compass() +
+  tmap_style("cobalt") #Ver las demas opciones lindas, ejemplo: natural
+tmap_save("box_map_Heridos.jpg", tm = plot, width = 12, height = 12, units = "cm", dpi = 300)
+
 # Definicion del vecindario tipo reina
 reina <- poly2nb(rosmap, queen = TRUE)
 lista <- nb2listw(reina, style = "S")
@@ -155,7 +187,7 @@ W <- nb2mat(reina, glist = NULL, style = "S", zero.policy = NULL)
 # Se comprueba la igualdad con el obtenido directamente con la sentencia correspondiente
 ni <-rosmap$Heridos #vector que contiene el numero de hogares con nbi en cada radio censal
 m <- length(ni) #numero de areas o radios censales
-xi <- rosmap$THOGARES.x# vector que contiene el numero de hogares en cada radio censal
+xi <- rosmap$Habitantes# vector que contiene el numero de hogares en cada radio censal
 pi <- ni / xi
 pmedia <- sum(pi) / m
 pdif <- pi - pmedia

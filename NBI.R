@@ -1,5 +1,6 @@
 # Carga de paquetes necesarios 
-list.of.packages <- c("readxl","ggplot2","sp","rgdal","RColorBrewer","Matrix","lattice","classInt","gtools","sf","spdep","dplyr", "xlsx", "lubridate", "tidyverse","car","raster","rgeos")
+list.of.packages <- c("readxl","ggplot2","sp","rgdal","RColorBrewer","Matrix","lattice","classInt","gtools","sf","spdep","dplyr", 
+                      "xlsx", "lubridate", "tidyverse","car","raster","rgeos", "spdplyr", "magrittr", "tmap")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[, "Package"])]
 if(length(new.packages)) install.packages(new.packages)
 for (paquete in list.of.packages) {suppressMessages(library(paquete,character.only = TRUE) ) }
@@ -13,7 +14,15 @@ df <- read_excel("C:/Users/FerraroS/Desktop/Todo_seba/Cosas/Quinto anio - Tesis/
 #Grafico antes de pasarlo a la clase spatyal points dataframe
 #ggplot(df, aes(X, Y)) +
 #  geom_point()
-
+# Se crea una columna con las clases que segmenta un box plot
+RI <- quantile(df$porc, 0.75)-quantile(df$porc, 0.25)
+df = df %>% mutate(Referencias = case_when(porc < quantile(df$porc, 0.25) - 1.5*RI ~ '1Outlier Inferior',
+                                                      quantile(df$porc, 0.25) - 1.5*RI <= porc & porc < quantile(df$porc, 0.25) ~ '2< 25%',
+                                                      quantile(df$porc, 0.25) <= porc & porc < quantile(df$porc, 0.50) ~ '325%-50%',
+                                                      quantile(df$porc, 0.50) <= porc & porc < quantile(df$porc, 0.75) ~ '450%-75%',
+                                                      quantile(df$porc, 0.75) <= porc & porc < quantile(df$porc, 0.75) + 1.5*RI ~ '5>75%',
+                                                      quantile(df$porc, 0.75) + 1.5*RI <= porc ~ '6Outlier Superior'))
+dfs <- dplyr::select(df, 'POLY_ID', 'Referencias')
 # Se indica que X e Y son las latitudes y longitudes correspondientes
 coordinates(df) <- ~X+Y
 
@@ -89,13 +98,24 @@ x <- rosmap$prop #Variable de interes principal
 # Grafico exploratorio
 plot(rosmap, main="Radios censales de la ciudad de Rosario")
 
-# Grafico de calor que indica el porcentaje de hogares con NBI a lo largo de todos los radios censales en Rosario
-arrow <- list("SpatialPolygonsRescale", layout.north.arrow(), offset=c(-60.75, -33), scale(10))
-jpeg(file = "nbi_radios.jpg")
-spplot(rosmap, "porc", key.space = list(x = 0.62, y = 1, corner = c(0, 1)), sp.layout = list(arrow),
-       colorkey = list(space = "right"), scales = list(draw = T),
-       main = "Porcentaje de Hogares con NBI en Rosario", as.table = TRUE)
-dev.off()
+# Nos traemos la columna con las clases del boxplot para rosmap
+rosmap <- sp::merge(rosmap, dfs, by = c("POLY_ID" = "POLY_ID"))
+# Gráfico de calor que indica el porcentaje de hogares con NBI a lo largo de todos los radios censales en Rosario
+#arrow <- list("SpatialPolygonsRescale", layout.north.arrow(), offset=c(-60.75, -33), scale(10))
+#jpeg(file = "nbi_radios.jpg")
+#spplot(rosmap, "class_boxplot", key.space = list(x = 0.62, y = 1, corner = c(0, 1)), sp.layout = list(arrow),
+#       colorkey = list(space = "right"), scales = list(draw = T),
+#       main = "Porcentaje de Hogares con NBI en Rosario", as.table = TRUE)
+#dev.off()
+
+# Gracias Datacamp
+plot <- tm_shape(rosmap) +
+  tm_borders() +
+  tm_fill(col = 'Referencias')+
+  tm_compass() +
+  tmap_style("cobalt") #Ver las demas opciones lindas, ejemplo: natural
+tmap_save("box_map_NBI.jpg", tm = plot, width = 12, height = 12, units = "cm", dpi = 300)
+
 #Definicion del vecindario tipo reina
 reina <- poly2nb(rosmap, queen = TRUE)#dnearneigh basado en distancias
 
