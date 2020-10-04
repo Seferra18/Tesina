@@ -53,12 +53,12 @@ paste0("La proporción promedio de hogares con NBI en Rosario es ", round(propor
 df_aux <- rosmap$THOGARES
 df_aux <- as.data.frame(df_aux)
 names(df_aux)[1] = "Total_Hogares"
-ggplot(df_aux, aes(x = df_aux$Total_Hogares)) +
+ggplot(df_aux, aes(x = Total_Hogares)) +
   geom_histogram(binwidth = 50,
                  center = 25,
                  aes(col=I("white")), color = "blue") +
-  scale_y_continuous("Frecuencia") +
-  scale_x_continuous(breaks=seq(0, max(df_aux$Total_Hogares + 50), by = 200), "Total de Hogares") +
+  scale_y_continuous("Cantidad de radios censales") +
+  scale_x_continuous(breaks=seq(0, max(df_aux$Total_Hogares + 50), by = 200), "Cantidad de hogares") +
   theme(
     plot.title = element_blank()
   )
@@ -82,11 +82,11 @@ ggsave("total_hogares_NBI.jpg", plot = last_plot(), width = 12, height = 7, unit
 df_aux2 <- rosmap$prop
 df_aux2 <- as.data.frame(df_aux2)
 names(df_aux2)[1] = "Prop_Hogares_NBI"
-ggplot(df_aux2, aes(x = df_aux2$Prop_Hogares_NBI)) +
+ggplot(df_aux2, aes(x = Prop_Hogares_NBI)) +
   geom_histogram(binwidth = 0.02,
                  center = 0.02,
                  aes(col=I("white")), color = "blue") +
-  scale_y_continuous("Frecuencia") +
+  scale_y_continuous("Cantidad de radios censales") +
   scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Hogares_NBI), by = 0.1), "Proporción de Hogares con NBI") +
   theme(
     plot.title = element_blank()
@@ -108,19 +108,40 @@ rosmap <- sp::merge(rosmap, dfs, by = c("POLY_ID" = "POLY_ID"))
 #       main = "Porcentaje de Hogares con NBI en Rosario", as.table = TRUE)
 #dev.off()
 
+# Inputs para BoxMap 
+plotvar <- df_aux2$Prop_Hogares_NBI
+nclr <- 5 # Nivel de colores
+plotclr <- brewer.pal(nclr, "Blues")
+clases <- classIntervals(plotvar, nclr, style = "quantile", digits = 3)
+# Se customizan las clases
+RI <- quantile(df_aux2$Prop_Hogares_NBI, 0.75) - quantile(df_aux2$Prop_Hogares_NBI, 0.25)
+clases$brks[2] <- round(quantile(df_aux2$Prop_Hogares_NBI, 0.25), 3)
+clases$brks[3] <- round(quantile(df_aux2$Prop_Hogares_NBI, 0.5), 3)
+clases$brks[4] <- round(quantile(df_aux2$Prop_Hogares_NBI, 0.75), 3)
+clases$brks[5] <- round(quantile(df_aux2$Prop_Hogares_NBI, 0.75) + 1.5*RI, 3)
+clases$brks[6] <- 1
+codicol <- findColours(clases, plotclr)
+
+# BoxMap
+jpeg(file = "nbi_boxmap_last.jpg", width = 900, height = 700, units = 'px')
+plot(rosmap, col=codicol, border="black")
+#title(main = "Proporción de Hogares con NBI")
+legend("bottomleft", legend=names(attr(codicol, "table")), fill = attr(codicol, "palette"), cex=1.5)
+dev.off()
+#box()
 # Gracias Datacamp
 plot <- tm_shape(rosmap) +
   tm_borders() +
-  tm_fill(col = 'Referencias')+
+  tm_fill(col = 'Referencias') +
   tm_compass() +
-  tmap_style("cobalt") #Ver las demas opciones lindas, ejemplo: natural
+  tmap_style("col_blind") #Ver las demas opciones lindas, ejemplo: natural
 tmap_save("box_map_NBI.jpg", tm = plot, width = 12, height = 12, units = "cm", dpi = 300)
 
 #Definicion del vecindario tipo reina
 reina <- poly2nb(rosmap, queen = TRUE)#dnearneigh basado en distancias
 
 # Se escoge el metodo de estandarizacion de filas para la matriz de pesos espaciales
-lista <- nb2listw(reina, style = "S")
+lista <- nb2listw(reina, style = "W")
 
 # Indice de Moran
 moran.test(x, lista)# Supuesto de normalidad
@@ -164,7 +185,7 @@ names(vecinos)[2] = "Frecuencia"
 ggplot(vecinos, aes(x = Vecinos, y = Frecuencia)) +
   geom_bar(color = "blue", stat = "identity") +
   scale_x_discrete("Número de Vecinos") +
-  scale_y_continuous("Frecuencia") +
+  scale_y_continuous("Cantidad de radios censales") +
   ggtitle("Distribución del Número de Vecinos") +
   theme(
     plot.title = element_blank()
@@ -196,7 +217,7 @@ plot(centroides)
 #ver ggfortify
 
 # Obtencion de la matriz de pesos W
-W <- nb2mat(reina, glist = NULL, style = "S", zero.policy = NULL)
+W <- nb2mat(reina, glist = NULL, style = "W", zero.policy = NULL)
 
 # Calculo del indice de Moran utilizando las matrices 
 #Se comprueba la igualdad con el obtenido directamente con la sentencia correspondiente
@@ -275,44 +296,3 @@ resultados <-c (Ipop, -1 / (x - 1), stdev ^ 2, var_aprox, stdev, z, 1 - pnorm(z)
 etiquetas <- c("I*pop", "Media", "Variancia", "Variancia Aproximada", "Desvio Estandar", "Z", "P-valor")
 resultados_finales <- cbind(etiquetas, resultados)#concatena los vectores por columna
 View(resultados_finales)
-
-
-
-seba <- st_read(system.file("shapes/Rosario2010.shp", package="spData")[1], quiet=TRUE)
-# Ver, podria ser util
-columbus <- st_read(system.file("shapes/columbus.shp", package="spData")[1], quiet=TRUE)
-col.gal.nb <- read.gal(system.file("weights/columbus.gal", package="spData")[1])
-coords <- st_coordinates(st_centroid(st_geometry(columbus)))
-xx <- poly2nb(as(columbus, "Spatial"))
-dxx <- diffnb(xx, col.gal.nb)
-plot(st_geometry(columbus), border="grey")
-plot(col.gal.nb, coords, add=TRUE)
-plot(dxx, coords, add=TRUE, col="red")
-title(main=paste("Differences (red) in Columbus GAL weights (black)",
-                 "and polygon generated queen weights", sep="\n"), cex.main=0.6)
-# poly2nb with sf sfc_MULTIPOLYGON objects
-sf_xx <- poly2nb(columbus)
-diffnb(sf_xx, xx)
-sfc_xx <- poly2nb(st_geometry(columbus))
-diffnb(sfc_xx, xx)
-xxx <- poly2nb(as(columbus, "Spatial"), queen=FALSE)
-dxxx <- diffnb(xxx, col.gal.nb)
-plot(st_geometry(columbus), border = "grey")
-plot(col.gal.nb, coords, add = TRUE)
-plot(dxxx, coords, add = TRUE, col = "red")
-title(main=paste("Differences (red) in Columbus GAL weights (black)",
-                 "and polygon generated rook weights", sep="\n"), cex.main=0.6)
-cards <- card(xx)
-maxconts <- which(cards == max(cards))
-if(length(maxconts) > 1) maxconts <- maxconts[1]
-fg <- rep("grey", length(cards))
-fg[maxconts] <- "red"
-fg[xx[[maxconts]]] <- "green"
-plot(st_geometry(columbus), col=fg)
-title(main="Region with largest number of contiguities", cex.main=0.6)
-nc.sids <- st_read(system.file("shapes/sids.shp", package="spData")[1], quiet=TRUE)
-system.time(xxnb <- poly2nb(nc.sids))
-system.time(xxnb <- poly2nb(as(nc.sids, "Spatial")))
-plot(st_geometry(nc.sids))
-plot(xxnb, coordinates(as(nc.sids, "Spatial")), add=TRUE, col="blue")
-

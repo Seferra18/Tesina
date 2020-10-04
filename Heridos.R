@@ -61,12 +61,12 @@ paste0("La proporción promedio de Heridos de arma de fuego en Rosario es ", rou
 df_aux <- rosmap$Habitantes
 df_aux <- as.data.frame(df_aux)
 names(df_aux)[1] = "Total_Habitantes"
-ggplot(df_aux, aes(x = df_aux$Total_Habitantes)) +
+ggplot(df_aux, aes(x = Total_Habitantes)) +
   geom_histogram(binwidth = 100,
                  center = 50,
                  aes(col=I("white")), color = "blue") +
-  scale_y_continuous("Frecuencia") +
-  scale_x_continuous(breaks=seq(0, max(df_aux$Total_Habitantes + 100), by = 500), "Total de Habitantes") +
+  scale_y_continuous("Cantidad de radios censales") +
+  scale_x_continuous(breaks=seq(0, max(df_aux$Total_Habitantes + 100), by = 500), "Cantidad de Habitantes") +
   theme(
     plot.title = element_blank()
   )
@@ -80,8 +80,8 @@ ggplot(df_aux1, aes(x = Total_Heridos)) +
   geom_histogram(binwidth = 1,
                  center = 1,
                  aes(col=I("white")), color = "blue") +
-  scale_y_continuous("Frecuencia") +
-  scale_x_continuous(breaks=seq(0, max(df_aux1$Total_Heridos), by = 1), "Total de Heridos por arma de fuego") +
+  scale_y_continuous("Cantidad de radios censales") +
+  scale_x_continuous(breaks=seq(0, max(df_aux1$Total_Heridos), by = 1), "Cantidad de Heridos por arma de fuego") +
   theme(
     plot.title = element_blank()
   )
@@ -94,7 +94,7 @@ ggplot(df_aux2, aes(x = df_aux2$Prop_Heridos)) +
   geom_histogram(binwidth = 0.001,
                  center = 0.001,
                  aes(col=I("white")), color = "blue") +
-  scale_y_continuous("Frecuencia") +
+  scale_y_continuous("Cantidad de radios censales") +
   scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Heridos) , by = 0.002), "Proporción de Heridos de arma de fuego") +
   theme(
     plot.title = element_blank()
@@ -110,6 +110,29 @@ x <- rosmap$her_habitantes  #Variable de interes principal
 #       main = "Porcentaje de heridos de arma de fuego en Rosario", as.table = TRUE)
 #dev.off()
 
+
+# Inputs para BoxMap 
+plotvar <- df_aux2$Prop_Heridos
+nclr <- 5 # Nivel de colores
+plotclr <- brewer.pal(nclr, "Blues")
+clases <- classIntervals(plotvar, nclr, style = "quantile", digits = 3)
+# Se customizan las clases
+#RI <- quantile(df_aux2$Prop_Heridos, 0.75) - quantile(df_aux2$Prop_Heridos, 0.25)
+clases$brks[2] <- round(quantile(df_aux2$Prop_Heridos, 0.8), 3)
+clases$brks[3] <- round(quantile(df_aux2$Prop_Heridos, 0.85), 4)
+clases$brks[4] <- round(quantile(df_aux2$Prop_Heridos, 0.9), 4)
+clases$brks[5] <- round(quantile(df_aux2$Prop_Heridos, 0.95), 4)
+clases$brks[6] <- 1
+codicol <- findColours(clases, plotclr)
+
+# BoxMap
+jpeg(file = "heridos_boxmap_last.jpg", width = 900, height = 700, units = 'px')
+plot(rosmap, col=codicol, border="black")
+#title(main = "Proporción de Hogares con NBI")
+legend("bottomleft", legend=names(attr(codicol, "table")), fill = attr(codicol, "palette"), cex=1.5)
+dev.off()
+#box()
+
 # BOX MAP
 plot <- tm_shape(rosmap) +
   tm_borders() +
@@ -120,7 +143,7 @@ tmap_save("box_map_Heridos.jpg", tm = plot, width = 12, height = 12, units = "cm
 
 # Definicion del vecindario tipo reina
 reina <- poly2nb(rosmap, queen = TRUE)
-lista <- nb2listw(reina, style = "S")
+lista <- nb2listw(reina, style = "W")
 moran.test(x, lista) # Supuesto de normalidad
 moran.mc(x, lista, nsim = 999)# Test permutacional
 
@@ -182,7 +205,7 @@ ggsave("her_moran.jpg", plot = last_plot(), width = 12, height = 7, units = "cm"
 #hay opciones para llevarlo a powerpoint y editarlo alli
 #ver ggfortify
 # Obtencion de la matriz de pesos W
-W <- nb2mat(reina, glist = NULL, style = "S", zero.policy = NULL)
+W <- nb2mat(reina, glist = NULL, style = "W", zero.policy = NULL)
 # Calculo del indice de Moran utilizando las matrices 
 # Se comprueba la igualdad con el obtenido directamente con la sentencia correspondiente
 ni <-rosmap$Heridos #vector que contiene el numero de hogares con nbi en cada radio censal
