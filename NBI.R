@@ -243,6 +243,23 @@ summary(ebi)
 plot(ebi)#----Pensar los graficos que se pueden hacer
 plot(Q)
 
+#Grafico de dispersion del EBI
+rezagos_ebi <- cbind(ebi$z, lag.listw(lista, ebi$z))
+rezagos_ebi <- as.data.frame(rezagos_ebi)
+n0ames(rezagos_ebi)[1] = "Hogares"
+names(rezagos_ebi)[2] = "Retardos"
+ggplot(rezagos_ebi, aes(x = Hogares, y = Retardos)) +
+  geom_point(color = "blue", size = 2, shape = 20) +
+  stat_smooth(method = "lm", se = F, col = "red") +
+  scale_x_continuous("Proporción de Hogares con NBI") +
+  scale_y_continuous("Retardo Espacial") +
+  coord_cartesian(xlim = c(min(rezagos_ebi$Hogares), max(rezagos_ebi$Hogares)), ylim = c(min(rezagos_ebi$Retardos) + 0.1, max(rezagos_ebi$Retardos))) +
+  ggtitle("Gráfico de dispersión del EBI") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("nbi_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
 # Grafico mejorado para el EBI
 rezagos <- Q
 rezagos <- as.data.frame(rezagos)
@@ -258,7 +275,7 @@ ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
   theme(
     plot.title = element_blank()
   )
-ggsave("nbi_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+#ggsave("nbi_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 # Obtencion de la matriz de pesos M
 M <- W
 diag(M) <- 2 #Para todo i=j--->mij=2, tal como se detalla en el paper
@@ -296,3 +313,4 @@ resultados <-c (Ipop, -1 / (x - 1), stdev ^ 2, var_aprox, stdev, z, 1 - pnorm(z)
 etiquetas <- c("I*pop", "Media", "Variancia", "Variancia Aproximada", "Desvio Estandar", "Z", "P-valor")
 resultados_finales <- cbind(etiquetas, resultados)#concatena los vectores por columna
 View(resultados_finales)
+

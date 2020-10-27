@@ -95,11 +95,11 @@ ggplot(df_aux2, aes(x = df_aux2$Prop_Heridos)) +
                  center = 0.001,
                  aes(col=I("white")), color = "blue") +
   scale_y_continuous("Cantidad de radios censales") +
-  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Heridos) , by = 0.002), "Proporción de Heridos de arma de fuego") +
+  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Heridos) , by = 0.002), "Tasa de Heridos de arma de fuego") +
   theme(
     plot.title = element_blank()
   )
-ggsave("proporcion_heridos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+ggsave("tasa_heridos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
 x <- rosmap$her_habitantes  #Variable de interes principal
 
@@ -189,7 +189,7 @@ names(rezagos)[2] = "Retardos"
 ggplot(rezagos, aes(x = Heridos, y = Retardos)) +
   geom_point(color = "blue", size = 2, shape = 20) +
   stat_smooth(method = "lm", se = F, col = "red") +
-  scale_x_continuous("Proporción de Heridos con arma de fuego") +
+  scale_x_continuous("Tasa de Heridos con arma de fuego") +
   scale_y_continuous("Retardo Espacial") +
   coord_cartesian(xlim = c(min(rezagos$Heridos), max(rezagos$Heridos)), ylim = c(min(rezagos$Retardos), max(rezagos$Retardos))) +
   ggtitle("Gráfico de dispersión de Moran") +
@@ -228,6 +228,23 @@ print(ebi)
 summary(ebi)
 #View(ebi)
 plot(ebi)#----Pensar los graficos que se pueden hacer
+#Grafico de dispersion del EBI
+rezagos_ebi <- cbind(ebi$z, lag.listw(lista, ebi$z))
+rezagos_ebi <- as.data.frame(rezagos_ebi)
+names(rezagos_ebi)[1] = "Hogares"
+names(rezagos_ebi)[2] = "Retardos"
+ggplot(rezagos_ebi, aes(x = Hogares, y = Retardos)) +
+  geom_point(color = "blue", size = 2, shape = 20) +
+  stat_smooth(method = "lm", se = F, col = "red") +
+  scale_x_continuous("Tasa de Heridos de arma de fuego") +
+  scale_y_continuous("Retardo Espacial") +
+  coord_cartesian(xlim = c(min(rezagos_ebi$Hogares), max(rezagos_ebi$Hogares)), ylim = c(min(rezagos_ebi$Retardos), 4)) +
+  ggtitle("Gráfico de dispersión del EBI") +
+  theme(
+    plot.title = element_blank()
+  )
+ggsave("heridos_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+
 # Grafico mejorado para el EBI
 rezagos <- Q
 rezagos <- as.data.frame(rezagos)
@@ -236,14 +253,14 @@ names(rezagos)[2] = "Retardos"
 ggplot(rezagos, aes(x = Heridos, y = Retardos)) +
   geom_point(color = "blue", size = 2, shape = 20) +
   stat_smooth(method = "lm", se = F, col = "red") +
-  scale_x_continuous("Proporción de Heridos de arma de fuego") +
+  scale_x_continuous("Tasa de Heridos de arma de fuego") +
   scale_y_continuous("Retardo Espacial") +
   coord_cartesian(xlim = c(min(rezagos$Heridos), max(rezagos$Heridos)), ylim = c(min(rezagos$Retardos), max(rezagos$Retardos))) +
   ggtitle("Gráfico de dispersión de Moran") +
   theme(
     plot.title = element_blank()
   )
-ggsave("her_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
+#ggsave("her_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
 # Obtencion de la matriz de pesos M
 M <- W
@@ -282,3 +299,4 @@ resultados <-c (Ipop, -1 / (x - 1), stdev ^ 2, var_aprox, stdev, z, 1 - pnorm(z)
 etiquetas <- c("I*pop", "Media", "Variancia", "Variancia Aproximada", "Desvio Estandar", "Z", "P-valor")
 resultados_finales <- cbind(etiquetas, resultados)#concatena los vectores por columna
 View(resultados_finales)
+
