@@ -1,4 +1,4 @@
-# En este script se encuentran las funciones más importantes utilizadas en la tesina
+#En este script se encuentran las funciones más importantes utilizadas en la tesina
 
 #Funcion boxplot
 cajaBigotes <- function(df, y, labely, q){
@@ -10,7 +10,7 @@ cajaBigotes <- function(df, y, labely, q){
           axis.ticks.x = element_blank())
 }
 
-# índice de Oden
+#índice de Oden
 oden <- function(matriz_vecindad, ni, xi){
   M <- matriz_vecindad
   diag(M) <- 2 #Para todo i=j--->mij=2, tal como se detalla en el paper de Oden(1995)
@@ -33,12 +33,12 @@ oden <- function(matriz_vecindad, ni, xi){
   s0 <- x ^ 2 * A - x * B
   s1 <- (x ^ 2 * C) / 2 - 2 * x * D
   s2 <- x ^ 3 * E - 4 * x ^ 2 * FI + 4 * x * D
-  # Numerador y denominador del indice de Oden
+  #Numerador y denominador del indice de Oden
   num <- n ^ 2 * (ed %*% (peso %*% ed)) - n * (1 - 2 * b) * sum(ei * diag(peso)) - n * b * sum(di * diag(peso))
   den <- (b * (1 - b) * s0)
-  # Indice de Oden
+  #Indice de Oden
   Ipop <- num / den
-  # Esperanza y variancia
+  #Esperanza y variancia
   b2 <- 1 / (b * (1 - b)) - 3
   aux <- x * ((x ^ 2 - 3 * x + 3) * s1 - x * s2 + 3 * s0 ^ 2) - b2 * (x * (x - 1) * s1 - 2 * x *s2 + 6 * s0 ^ 2)
   espcuad <- aux / ((x - 1) * (x - 2) * (x - 3) * s0 ^ 2)
