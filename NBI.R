@@ -1,5 +1,5 @@
 # Carga de paquetes necesarios 
-list.of.packages <- c("readxl", "ggplot2", "sp", "lattice", "spdep", "dplyr", "lubridate", "tidyverse", "spdplyr", "tmap")
+list.of.packages <- c("readxl", "ggplot2", "sp", "rgdal", "RColorBrewer", "classInt", "lattice", "spdep", "dplyr", "lubridate", "tidyverse", "spdplyr", "tmap")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[, "Package"])]
 if(length(new.packages)) install.packages(new.packages)
 for (paquete in list.of.packages) {suppressMessages(library(paquete,character.only = TRUE) ) }
@@ -8,12 +8,9 @@ for (paquete in list.of.packages) {suppressMessages(library(paquete,character.on
 source('Funciones.R')
 
 #Poligonos correspondientes a los radios censales de Rosario
-rosmap <- readOGR("C:/Users/FerraroS/Desktop/Todo_seba/Cosas/Quinto anio - Tesis/Bases", "Rosario2010")
+rosmap <- readOGR(paste0(getwd(), "/Datos"), "Rosario2010")
 
-# df con los centroides de los radios censales
-df <- read_excel("C:/Users/FerraroS/Desktop/Todo_seba/Cosas/Quinto anio - Tesis/Bases/Datos_2010.xlsx")
-
-#Es necesario eliminar la observacion 842, ya que no contiene hogares
+#Es necesario eliminar el radio censal 842, ya que no contiene hogares
 rosmap <- rosmap[rosmap$POLY_ID != 842, ]
 
 # EDA previo al analisis espacial
@@ -100,13 +97,13 @@ legend("bottomleft", legend=names(attr(codicol, "table")), fill = attr(codicol, 
 dev.off()
 
 #Definicion del vecindario tipo reina
-reina <- poly2nb(rosmap, queen = TRUE)#dnearneigh basado en distancias
+reina <- poly2nb(rosmap, queen = TRUE)
 
 # Se escoge el metodo de estandarizacion de filas para la matriz de pesos espaciales
 lista <- nb2listw(reina, style = "W")
 
 # Indice de Moran
-moran.test(x, lista)# Supuesto de normalidad
+moran.test(x, lista)
 moran.mc(x, lista, nsim = 999) # Test permutacional
 
 # BOXPLOTS
@@ -161,10 +158,6 @@ ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
     )
 ggsave("nbi_moran.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
-# Obtencion de los centroides de cada radio censal
-centroides <- gCentroid(rosmap, byid = TRUE)
-plot(centroides)
-
 # Obtencion de la matriz de pesos W
 W <- nb2mat(reina, glist = NULL, style = "W", zero.policy = NULL)
 
@@ -206,3 +199,27 @@ ggsave("nbi_ebi.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", 
 
 # índice de Oden
 oden(matriz_vecindad = W, ni = rosmap$con_NBI, xi = rosmap$THOGARES)
+
+# Exclusión de los 3 radios censales extremos
+sin_outliers <- filter(rosmap, rosmap$prop!=1)
+
+#Definicion del vecindario tipo reina
+reina <- poly2nb(sin_outliers, queen = TRUE)
+# Se escoge el metodo de estandarizacion de filas para la matriz de pesos espaciales
+lista <- nb2listw(reina, style = "W")
+# Indice de Moran
+x <- sin_outliers$prop #Variable de interes principal
+moran.test(x, lista)
+moran.mc(x, lista, nsim = 999) # Test permutacional
+
+# Calculo del EBI
+ni <-sin_outliers$con_NBI #vector que contiene el numero de hogares con nbi en cada radio censal
+xi <- sin_outliers$THOGARES #vector que contiene el numero de hogares en cada radio censal
+ebi <- EBImoran.mc(ni, xi, lista, nsim = 999, zero.policy = TRUE)
+print(ebi)
+summary(ebi)
+plot(ebi)
+
+# índice de Oden
+W <- nb2mat(reina, glist = NULL, style = "W", zero.policy = NULL)
+oden(matriz_vecindad = W, ni = sin_outliers$con_NBI, xi = sin_outliers$THOGARES)
