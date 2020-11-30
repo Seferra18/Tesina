@@ -142,16 +142,17 @@ ggplot(vecinos, aes(x = Vecinos, y = Frecuencia)) +
 ggsave("nbi_vecinos.jpg", plot = last_plot(), width = 12, height = 7, units = "cm", dpi = 300)
 
 # Grafico de dispersion de moran
-rezagos <- cbind(x, lag.listw(lista, x))
+x_plot <- (x-mean(x))/sd(x) 
+rezagos <- cbind(x_plot, lag.listw(lista, x_plot))
 rezagos <- as.data.frame(rezagos)
 names(rezagos)[1] = "Hogares"
 names(rezagos)[2] = "Retardos"
 ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
   geom_point(color = "blue", size = 2, shape = 20) +
   stat_smooth(method = "lm", se = F, col = "red") +
-  scale_x_continuous("Proporción de Hogares con NBI") +
+  scale_x_continuous("Proporción de Hogares con NBI estandarizada") +
   scale_y_continuous("Retardo Espacial") +
-  coord_cartesian(xlim = c(0, 1), ylim = c(0, 0.4)) +
+  #coord_cartesian(xlim = c(0, 1), ylim = c(0, 0.4)) +
   ggtitle("Gráfico de dispersión de Moran") +
   theme(
     plot.title = element_blank()
