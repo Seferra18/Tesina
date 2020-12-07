@@ -96,6 +96,23 @@ plot(rosmap, col=codicol, border="black")
 legend("bottomleft", legend=names(attr(codicol, "table")), fill = attr(codicol, "palette"), cex=1.5)
 dev.off()
 
+# OUTLIERS NBI PRUEBA
+# Inputs para BoxMap 
+plotvar <- df_aux2$Prop_Hogares_NBI
+nclr <- 2 # Nivel de colores
+plotclr <- brewer.pal(nclr, "Blues")
+clases <- classIntervals(plotvar, nclr, style = "quantile", digits = 3)
+# Se customizan las clases
+clases$brks[2] <- 0.99
+clases$brks[3] <- 1
+codicol <- findColours(clases, plotclr)
+# BoxMap
+jpeg(file = "nbi_boxmap_out.jpg", width = 900, height = 700, units = 'px')
+plot(rosmap, col=codicol, border="black")
+title(main = "Proporción de Hogares con NBI")
+legend("bottomleft", legend=names(attr(codicol, "table")), fill = attr(codicol, "palette"), cex=1.5)
+dev.off()
+
 #Definicion del vecindario tipo reina
 reina <- poly2nb(rosmap, queen = TRUE)
 
@@ -148,11 +165,13 @@ rezagos <- as.data.frame(rezagos)
 names(rezagos)[1] = "Hogares"
 names(rezagos)[2] = "Retardos"
 ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
-  geom_point(color = "blue", size = 2, shape = 20) +
+  geom_point(color = "blue", size = 1, shape = 20) +
   stat_smooth(method = "lm", se = F, col = "red") +
+  geom_segment(aes(x = 0, y = -1, xend = 0, yend = 5), linetype=2) +
+  geom_segment(aes(x = -1, y = 0, xend = 11, yend = 0), linetype=2) +
   scale_x_continuous("Proporción de Hogares con NBI estandarizada") +
   scale_y_continuous("Retardo Espacial") +
-  #coord_cartesian(xlim = c(0, 1), ylim = c(0, 0.4)) +
+  coord_cartesian(xlim = c(min(rezagos$Hogares), max(rezagos$Hogares)), ylim = c(min(rezagos$Retardos) + 0.1, max(rezagos$Retardos))) +
   ggtitle("Gráfico de dispersión de Moran") +
   theme(
     plot.title = element_blank()
@@ -187,9 +206,11 @@ rezagos_ebi <- as.data.frame(rezagos_ebi)
 names(rezagos_ebi)[1] = "Hogares"
 names(rezagos_ebi)[2] = "Retardos"
 ggplot(rezagos_ebi, aes(x = Hogares, y = Retardos)) +
-  geom_point(color = "blue", size = 2, shape = 20) +
+  geom_point(color = "blue", size = 1, shape = 20) +
   stat_smooth(method = "lm", se = F, col = "red") +
-  scale_x_continuous("Proporción de Hogares con NBI (zi)") +
+  geom_segment(aes(x = 0, y = -1, xend = 0, yend = 6), linetype=2) +
+  geom_segment(aes(x = -1, y = 0, xend = 11, yend = 0), linetype=2) +
+  scale_x_continuous("Proporción de Hogares con NBI estandarizada (yi)") +
   scale_y_continuous("Retardo Espacial") +
   coord_cartesian(xlim = c(min(rezagos_ebi$Hogares), max(rezagos_ebi$Hogares)), ylim = c(min(rezagos_ebi$Retardos) + 0.1, max(rezagos_ebi$Retardos))) +
   ggtitle("Gráfico de dispersión del EBI") +
