@@ -49,7 +49,7 @@ ggplot(df_aux1, aes(x = df_aux1$Total_Hogares_NBI)) +
                  center = 5,
                  aes(col=I("white")), color = "blue") +
   scale_y_continuous("Frecuencia") +
-  scale_x_continuous(breaks=seq(0, max(df_aux1$Total_Hogares_NBI + 10), by = 25), "Total de Hogares con NBI") +
+  scale_x_continuous(breaks=seq(0, max(df_aux1$Total_Hogares_NBI + 10), by = 25), "Total de hogares con NBI") +
   theme(
     plot.title = element_blank()
   )
@@ -63,7 +63,7 @@ ggplot(df_aux2, aes(x = Prop_Hogares_NBI)) +
                  center = 0.02,
                  aes(col=I("white")), color = "blue") +
   scale_y_continuous("Cantidad de radios censales") +
-  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Hogares_NBI), by = 0.1), "Proporción de Hogares con NBI") +
+  scale_x_continuous(breaks=seq(0, max(df_aux2$Prop_Hogares_NBI), by = 0.1), "Proporción de hogares con NBI") +
   theme(
     plot.title = element_blank()
   )
@@ -109,7 +109,7 @@ codicol <- findColours(clases, plotclr)
 # BoxMap
 jpeg(file = "nbi_boxmap_out.jpg", width = 900, height = 700, units = 'px')
 plot(rosmap, col=codicol, border="black")
-title(main = "Proporción de Hogares con NBI")
+title(main = "Proporción de hogares con NBI")
 legend("bottomleft", legend=names(attr(codicol, "table")), fill = attr(codicol, "palette"), cex=1.5)
 dev.off()
 
@@ -150,9 +150,9 @@ names(vecinos)[1] = "Vecinos"
 names(vecinos)[2] = "Frecuencia"
 ggplot(vecinos, aes(x = Vecinos, y = Frecuencia)) +
   geom_bar(color = "blue", stat = "identity") +
-  scale_x_discrete("Número de Vecinos") +
+  scale_x_discrete("Número de vecinos") +
   scale_y_continuous("Cantidad de radios censales") +
-  ggtitle("Distribución del Número de Vecinos") +
+  ggtitle("Distribución del número de vecinos") +
   theme(
     plot.title = element_blank()
   )
@@ -169,8 +169,8 @@ ggplot(rezagos, aes(x = Hogares, y = Retardos)) +
   stat_smooth(method = "lm", se = F, col = "red") +
   geom_segment(aes(x = 0, y = -1, xend = 0, yend = 5), linetype=2) +
   geom_segment(aes(x = -1, y = 0, xend = 11, yend = 0), linetype=2) +
-  scale_x_continuous("Proporción de Hogares con NBI estandarizada") +
-  scale_y_continuous("Retardo Espacial") +
+  scale_x_continuous("Proporción de hogares con NBI estandarizada") +
+  scale_y_continuous("Retardo espacial") +
   coord_cartesian(xlim = c(min(rezagos$Hogares), max(rezagos$Hogares)), ylim = c(min(rezagos$Retardos) + 0.1, max(rezagos$Retardos))) +
   ggtitle("Gráfico de dispersión de Moran") +
   theme(
@@ -210,8 +210,8 @@ ggplot(rezagos_ebi, aes(x = Hogares, y = Retardos)) +
   stat_smooth(method = "lm", se = F, col = "red") +
   geom_segment(aes(x = 0, y = -1, xend = 0, yend = 6), linetype=2) +
   geom_segment(aes(x = -1, y = 0, xend = 11, yend = 0), linetype=2) +
-  scale_x_continuous("Proporción de Hogares con NBI estandarizada (yi)") +
-  scale_y_continuous("Retardo Espacial") +
+  scale_x_continuous("Proporción de hogares con NBI estandarizada (yi)") +
+  scale_y_continuous("Retardo espacial") +
   coord_cartesian(xlim = c(min(rezagos_ebi$Hogares), max(rezagos_ebi$Hogares)), ylim = c(min(rezagos_ebi$Retardos) + 0.1, max(rezagos_ebi$Retardos))) +
   ggtitle("Gráfico de dispersión del EBI") +
   theme(
