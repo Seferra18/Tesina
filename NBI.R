@@ -124,7 +124,7 @@ moran.test(x, lista)
 moran.mc(x, lista, nsim = 999) # Test permutacional
 
 # BOXPLOTS
-# Vecinos
+# Vecindades
 vecinos_bp <- card(reina)
 vecinos_bp <- as.data.frame(vecinos_bp)
 names(vecinos_bp)[1] = "Vecinos"
